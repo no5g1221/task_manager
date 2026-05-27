@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="data:application/json,{%22name%22:%22タスクアプリ%22,%22short_name%22:%22タスク%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23F7F6F3%22,%22theme_color%22:%22%234A7C6F%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%234A7C6F'/%3E%3Ctext y='.9em' font-size='80' x='10'%3E✓%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22,%22type%22:%22image/svg+xml%22}]}">
+<title>タスクアプリ</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F6F3;
+    --surface: #FFFFFF;
+    --surface2: #F0EEE9;
+    --accent: #4A7C6F;
+    --accent-light: #E8F2EF;
+    --accent-soft: #B8D4CE;
+    --text-primary: #1C1C1C;
+    --text-secondary: #888880;
+    --text-tertiary: #BBBBB3;
+    --border: #E8E6E0;
+    --today: #4A7C6F;
+    --danger: #D4614A;
+    --shadow: 0 2px 12px rgba(0,0,0,0.06);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.10);
+    --radius: 16px;
+    --radius-sm: 10px;
+    --tab-h: 72px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    background: var(--surface);
+    padding: 52px 24px 20px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-title {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+  }
+  .header-date {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 3px;
+    font-weight: 300;
+  }
+  .header-badge {
+    background: var(--accent);
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ===== MAIN CONTENT ===== */
+  .main {
+    padding: 0 0 calc(var(--tab-h) + 20px);
+    min-height: calc(100vh - var(--tab-h));
+  }
+
+  /* ===== SCREEN ===== */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ===== SECTION ===== */
+  .section {
+    padding: 20px 20px 0;
+  }
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-left: 2px;
+  }
+
+  /* ===== DAY GROUP ===== */
+  .day-group {
+    margin-bottom: 6px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .day-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+  .day-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .day-label.today {
+    color: var(--today);
+  }
+  .day-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+  .day-dot.today { background: var(--today); }
+  .day-count {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* ===== TASK ITEM ===== */
+  .task-item {
+    display: flex;
+    align-items: center;
+    padding: 13px 16px;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .task-item:last-child { border-bottom: none; }
+  .task-item:active { background: var(--surface2); }
+  .task-item.completing {
+    animation: completeTask 0.35s ease forwards;
+  }
+  @keyframes completeTask {
+    0% { opacity: 1; max-height: 60px; }
+    50% { opacity: 0.3; }
+    100% { opacity: 0; max-height: 0; padding: 0 16px; }
+  }
+
+  .task-check {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    background: transparent;
+  }
+  .task-check:hover { border-color: var(--accent-soft); }
+  .task-check.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .task-check.checked::after {
+    content: '';
+    width: 5px;
+    height: 9px;
+    border: 2px solid white;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+    display: block;
+  }
+
+  .task-body { flex: 1; min-width: 0; }
+  .task-name {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-primary);
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .task-name.done {
+    color: var(--text-tertiary);
+    text-decoration: line-through;
+  }
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 3px;
+  }
+  .task-project {
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--surface2);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-weight: 400;
+  }
+  .task-edit-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    font-size: 18px;
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: 6px;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+    letter-spacing: 1px;
+  }
+  .task-edit-btn:active { background: var(--surface2); color: var(--text-secondary); }
+
+  .task-overdue {
+    font-size: 11px;
+    color: var(--danger);
+    font-weight: 500;
+  }
+
+  /* ===== SOMEDAY SECTION ===== */
+  .someday-group {
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin-bottom: 6px;
+  }
+  .someday-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+    cursor: pointer;
+  }
+  .someday-icon {
+    font-size: 14px;
+  }
+  .someday-toggle {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    transition: transform 0.2s;
+  }
+  .someday-toggle.open { transform: rotate(180deg); }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text-tertiary);
+    font-size: 13px;
+    line-height: 1.8;
+  }
+  .empty-icon { font-size: 28px; margin-bottom: 8px; }
+
+  /* ===== PROJECT LIST ===== */
+  .project-list { padding: 20px; }
+  .project-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: box-shadow 0.2s, transform 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .project-card:active { transform: scale(0.98); }
+  .project-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--project-color, var(--accent));
+    border-radius: 4px 0 0 4px;
+  }
+  .project-emoji { font-size: 22px; }
+  .project-info { flex: 1; }
+  .project-name {
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-primary);
+  }
+  .project-count {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .project-arrow {
+    color: var(--text-tertiary);
+    font-size: 16px;
+  }
+  .project-edit-btn {
+    background: var(--surface2);
+    border: none;
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+    letter-spacing: 1px;
+  }
+  .project-edit-btn:active { background: var(--border); }
+
+  .project-add-btn {
+    background: transparent;
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+    width: 100%;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .project-add-btn:hover { border-color: var(--accent-soft); color: var(--accent); }
+
+  /* ===== PROJECT DETAIL ===== */
+  .back-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--accent);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 16px 20px 8px;
+    font-weight: 500;
+  }
+
+  /* ===== SETTINGS ===== */
+  .settings-list { padding: 20px; }
+  .settings-section-title {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    padding-left: 4px;
+  }
+  .settings-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    cursor: pointer;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row-icon { font-size: 18px; width: 28px; text-align: center; }
+  .settings-row-label { font-size: 14px; flex: 1; }
+  .settings-row-value { font-size: 13px; color: var(--text-secondary); }
+
+  /* ===== TAB BAR ===== */
+  .tabbar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    height: var(--tab-h);
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    padding-top: 10px;
+    z-index: 200;
+  }
+  .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: all 0.15s;
+  }
+  .tab-icon {
+    font-size: 22px;
+    transition: transform 0.15s;
+  }
+  .tab-item.active .tab-icon { transform: scale(1.1); }
+  .tab-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    letter-spacing: 0.3px;
+  }
+  .tab-item.active .tab-label { color: var(--accent); }
+
+  /* ===== FAB ===== */
+  .fab {
+    position: fixed;
+    bottom: calc(var(--tab-h) + 20px);
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(74,124,111,0.4);
+    cursor: pointer;
+    z-index: 150;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+    color: white;
+    font-size: 26px;
+    font-weight: 300;
+    line-height: 1;
+  }
+  .fab:active { transform: scale(0.92); box-shadow: 0 2px 10px rgba(74,124,111,0.3); }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 300;
+    display: none;
+    align-items: flex-end;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+    padding: 24px 24px 40px;
+    animation: slideUp 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+  .modal-title {
+    font-size: 17px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    color: var(--text-primary);
+  }
+  .modal-input {
+    width: 100%;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 13px 14px;
+    font-size: 15px;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--text-primary);
+    background: var(--bg);
+    outline: none;
+    margin-bottom: 12px;
+    transition: border-color 0.2s;
+  }
+  .modal-input:focus { border-color: var(--accent); }
+  .modal-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .modal-select {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 13px 14px;
+    font-size: 14px;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--text-primary);
+    background: var(--bg);
+    outline: none;
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .modal-select:focus { border-color: var(--accent); }
+  .modal-date {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 13px 14px;
+    font-size: 14px;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: var(--text-primary);
+    background: var(--bg);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .modal-date:focus { border-color: var(--accent); }
+  .modal-btn {
+    width: 100%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 15px;
+    font-size: 15px;
+    font-weight: 500;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s;
+  }
+  .modal-btn:active { opacity: 0.85; }
+  .modal-btn-secondary {
+    width: 100%;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    font-size: 14px;
+    font-family: 'Noto Sans JP', sans-serif;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  /* ===== PROJECT DETAIL SCREEN ===== */
+  #project-detail-screen .section { padding-top: 8px; }
+
+  /* ===== SCROLLABLE ===== */
+  .scrollable {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header" id="main-header">
+  <div class="header-top">
+    <div>
+      <div class="header-title" id="header-title">今週のタスク</div>
+      <div class="header-date" id="header-date"></div>
+    </div>
+    <div class="header-badge" id="header-badge"></div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main scrollable" id="main-content">
+
+  <!-- HOME SCREEN -->
+  <div class="screen active" id="home-screen">
+    <div id="week-tasks"></div>
+    <div class="section" style="margin-top:6px;">
+      <div class="section-label">いつかやる</div>
+      <div class="someday-group">
+        <div class="someday-header" onclick="toggleSomeday()">
+          <span class="someday-icon">📋</span>
+          <span class="day-label" style="font-size:13px;">期日なしのタスク</span>
+          <span class="day-count" id="someday-count"></span>
+          <span class="someday-toggle" id="someday-toggle">▾</span>
+        </div>
+        <div id="someday-tasks"></div>
+      </div>
+    </div>
+    <div style="height:16px;"></div>
+  </div>
+
+  <!-- PROJECT SCREEN -->
+  <div class="screen" id="project-screen">
+    <div class="project-list" id="project-list"></div>
+  </div>
+
+  <!-- PROJECT DETAIL SCREEN -->
+  <div class="screen" id="project-detail-screen">
+    <div class="back-btn" onclick="backToProjects()">← プロジェクト一覧</div>
+    <div class="section">
+      <div id="project-detail-tasks"></div>
+    </div>
+    <div style="height:16px;"></div>
+  </div>
+
+  <!-- SETTINGS SCREEN -->
+  <div class="screen" id="settings-screen">
+    <div class="settings-list">
+      <div class="settings-section-title">プロジェクト管理</div>
+      <div class="settings-card">
+        <div class="settings-row" onclick="openAddProject()">
+          <span class="settings-row-icon">＋</span>
+          <span class="settings-row-label">新しいプロジェクトを追加</span>
+        </div>
+      </div>
+      <div class="settings-section-title">データ</div>
+      <div class="settings-card">
+        <div class="settings-row" onclick="clearAllData()">
+          <span class="settings-row-icon">🗑️</span>
+          <span class="settings-row-label" style="color:var(--danger)">すべてのデータを削除</span>
+        </div>
+      </div>
+      <div style="text-align:center; color:var(--text-tertiary); font-size:12px; margin-top:24px; line-height:2;">
+        タスクアプリ v1.0<br>データはこの端末に保存されます
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TAB BAR -->
+<div class="tabbar">
+  <div class="tab-item active" id="tab-home" onclick="switchTab('home')">
+    <span class="tab-icon">🏠</span>
+    <span class="tab-label">ホーム</span>
+  </div>
+  <div class="tab-item" id="tab-project" onclick="switchTab('project')">
+    <span class="tab-icon">📋</span>
+    <span class="tab-label">プロジェクト</span>
+  </div>
+  <div class="tab-item" id="tab-settings" onclick="switchTab('settings')">
+    <span class="tab-icon">⚙️</span>
+    <span class="tab-label">設定</span>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openAddTask()" id="fab-btn">＋</button>
+
+<!-- EDIT TASK MODAL -->
+<div class="modal-overlay" id="edit-task-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">タスクを編集</div>
+    <input type="hidden" id="edit-task-id">
+    <input class="modal-input" id="edit-task-name-input" placeholder="タスク名" maxlength="60">
+    <div class="modal-row">
+      <select class="modal-select" id="edit-task-project-select"></select>
+      <input type="date" class="modal-date" id="edit-task-date-input">
+    </div>
+    <button class="modal-btn" onclick="updateTask()">保存する</button>
+    <button class="modal-btn-secondary" style="color:var(--danger);border-color:var(--danger);" onclick="deleteTask()">このタスクを削除</button>
+    <button class="modal-btn-secondary" onclick="closeModal('edit-task-modal')">キャンセル</button>
+  </div>
+</div>
+
+<!-- ADD TASK MODAL -->
+<div class="modal-overlay" id="add-task-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">タスクを追加</div>
+    <input class="modal-input" id="task-name-input" placeholder="タスク名を入力..." maxlength="60">
+    <div class="modal-row">
+      <select class="modal-select" id="task-project-select"></select>
+      <input type="date" class="modal-date" id="task-date-input">
+    </div>
+    <button class="modal-btn" onclick="addTask()">追加する</button>
+    <button class="modal-btn-secondary" onclick="closeModal('add-task-modal')">キャンセル</button>
+  </div>
+</div>
+
+<!-- ADD PROJECT MODAL -->
+<div class="modal-overlay" id="add-project-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">プロジェクトを追加</div>
+    <input class="modal-input" id="project-name-input" placeholder="プロジェクト名（例：仕事）" maxlength="20">
+    <div class="modal-row">
+      <select class="modal-select" id="project-emoji-select">
+        <option value="🏠">🏠 住宅・引越し</option>
+        <option value="👶">👶 育児・妊娠</option>
+        <option value="💼">💼 仕事</option>
+        <option value="🛒">🛒 日常・買い物</option>
+        <option value="💰">💰 お金・手続き</option>
+        <option value="❤️">❤️ 家族</option>
+        <option value="📌">📌 その他</option>
+      </select>
+    </div>
+    <button class="modal-btn" onclick="addProject()">追加する</button>
+    <button class="modal-btn-secondary" onclick="closeModal('add-project-modal')">キャンセル</button>
+  </div>
+</div>
+
+<!-- EDIT PROJECT MODAL -->
+<div class="modal-overlay" id="edit-project-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">プロジェクトを編集</div>
+    <input type="hidden" id="edit-project-id">
+    <input class="modal-input" id="edit-project-name-input" placeholder="プロジェクト名" maxlength="20">
+    <div class="modal-row">
+      <select class="modal-select" id="edit-project-emoji-select">
+        <option value="🏠">🏠 住宅・引越し</option>
+        <option value="👶">👶 育児・妊娠</option>
+        <option value="💼">💼 仕事</option>
+        <option value="🛒">🛒 日常・買い物</option>
+        <option value="💰">💰 お金・手続き</option>
+        <option value="❤️">❤️ 家族</option>
+        <option value="📌">📌 その他</option>
+      </select>
+    </div>
+    <button class="modal-btn" onclick="updateProject()">保存する</button>
+    <button class="modal-btn-secondary" style="color:var(--danger);border-color:var(--danger);" onclick="deleteProject()">このプロジェクトを削除</button>
+    <button class="modal-btn-secondary" onclick="closeModal('edit-project-modal')">キャンセル</button>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+const PROJECT_COLORS = ['#4A7C6F','#7C6F4A','#4A6F7C','#7C4A6F','#6F7C4A','#4A4A7C'];
+let state = {
+  projects: [],
+  tasks: [],
+  currentProject: null,
+  somedayOpen: true,
+};
+
+// ===== STORAGE =====
+function save() {
+  localStorage.setItem('taskapp_v1', JSON.stringify({ projects: state.projects, tasks: state.tasks }));
+}
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem('taskapp_v1') || '{}');
+    state.projects = d.projects || getDefaultProjects();
+    state.tasks = d.tasks || [];
+  } catch(e) {
+    state.projects = getDefaultProjects();
+    state.tasks = [];
+  }
+}
+function getDefaultProjects() {
+  return [];
+}
+
+// ===== DATE UTILS =====
+function today() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getWeekDays() {
+  const days = [];
+  const now = new Date();
+  const dow = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - dow + (dow === 0 ? -6 : 1));
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const labels = ['日','月','火','水','木','金','土'];
+    const label = `${d.getMonth()+1}/${d.getDate()}（${labels[d.getDay()]}）`;
+    days.push({ key, label, isToday: key === today() });
+  }
+  return days;
+}
+function formatDateLabel(dateStr) {
+  const [y,m,d] = dateStr.split('-');
+  const date = new Date(y,m-1,d);
+  const labels = ['日','月','火','水','木','金','土'];
+  return `${parseInt(m)}/${parseInt(d)}（${labels[date.getDay()]}）`;
+}
+function isOverdue(dateStr) {
+  return dateStr && dateStr < today();
+}
+function getHeaderDateRange() {
+  const days = getWeekDays();
+  const first = days[0];
+  const last = days[6];
+  const f = first.key.slice(5).replace('-','/');
+  const l = last.key.slice(5).replace('-','/');
+  return `${f} 〜 ${l}`;
+}
+
+// ===== RENDER HOME =====
+function renderHome() {
+  const todayKey = today();
+  const weekDays = getWeekDays();
+  const weekKeys = weekDays.map(d => d.key);
+
+  // past overdue tasks (before this week)
+  const overdueTasks = state.tasks.filter(t => !t.done && t.date && t.date < weekKeys[0]);
+
+  let html = '';
+
+  // overdue block
+  if (overdueTasks.length > 0) {
+    html += `<div class="section"><div class="section-label" style="color:var(--danger)">期限切れ</div>`;
+    html += `<div class="day-group">`;
+    overdueTasks.forEach(t => {
+      html += renderTaskItem(t, true);
+    });
+    html += `</div></div>`;
+  }
+
+  // week days
+  html += `<div class="section" style="margin-top:${overdueTasks.length?'6':'0'}px;">`;
+  weekDays.forEach(day => {
+    const dayTasks = state.tasks.filter(t => !t.done && t.date === day.key);
+    if (dayTasks.length === 0 && !day.isToday) return;
+    const isToday = day.isToday;
+    html += `<div class="day-group">
+      <div class="day-header">
+        <div class="day-dot ${isToday?'today':''}"></div>
+        <span class="day-label ${isToday?'today':''}">${isToday ? '今日 ' : ''}${day.label}</span>
+        <span class="day-count">${dayTasks.length}件</span>
+      </div>`;
+    if (dayTasks.length === 0) {
+      html += `<div class="empty-state" style="padding:16px;font-size:12px;">タスクなし</div>`;
+    } else {
+      dayTasks.forEach(t => { html += renderTaskItem(t, false); });
+    }
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('week-tasks').innerHTML = html;
+
+  // someday
+  const somedayTasks = state.tasks.filter(t => !t.done && !t.date);
+  document.getElementById('someday-count').textContent = `${somedayTasks.length}件`;
+  let somedayHtml = '';
+  if (state.somedayOpen) {
+    if (somedayTasks.length === 0) {
+      somedayHtml = `<div class="empty-state" style="padding:16px;font-size:12px;">タスクなし</div>`;
+    } else {
+      somedayTasks.forEach(t => { somedayHtml += renderTaskItem(t, false); });
+    }
+  }
+  document.getElementById('someday-tasks').innerHTML = somedayHtml;
+  document.getElementById('someday-toggle').textContent = state.somedayOpen ? '▴' : '▾';
+  document.getElementById('someday-toggle').classList.toggle('open', state.somedayOpen);
+
+  // header badge
+  const totalActive = state.tasks.filter(t => !t.done).length;
+  document.getElementById('header-badge').textContent = `残り ${totalActive} 件`;
+}
+
+function renderTaskItem(task, showDate) {
+  const project = state.projects.find(p => p.id === task.projectId);
+  const overdue = isOverdue(task.date);
+  return `<div class="task-item" id="task-${task.id}"
+    onclick="completeTask('${task.id}')"
+    oncontextmenu="openEditTask(event,'${task.id}')"
+    data-id="${task.id}">
+    <div class="task-check ${task.done?'checked':''}"></div>
+    <div class="task-body">
+      <div class="task-name ${task.done?'done':''}">${escHtml(task.name)}</div>
+      <div class="task-meta">
+        ${project ? `<span class="task-project" style="background:${project.color}18;color:${project.color}">${project.emoji} ${escHtml(project.name)}</span>` : ''}
+        ${showDate && task.date ? `<span class="task-overdue">${formatDateLabel(task.date)}</span>` : ''}
+        ${overdue && !showDate ? `<span class="task-overdue">期限切れ</span>` : ''}
+      </div>
+    </div>
+    <button class="task-edit-btn" onclick="openEditTask(event,'${task.id}')">…</button>
+  </div>`;
+}
+
+// ===== RENDER PROJECTS =====
+function renderProjects() {
+  let html = '';
+  if (state.projects.length === 0) {
+    html += `<div class="day-group" style="margin-bottom:12px;"><div class="empty-state"><div class="empty-icon">📋</div>プロジェクトがありません<br>下のボタンから追加してみましょう</div></div>`;
+  }
+  state.projects.forEach((p, i) => {
+    const count = state.tasks.filter(t => !t.done && t.projectId === p.id).length;
+    const color = p.color || PROJECT_COLORS[i % PROJECT_COLORS.length];
+    html += `<div class="project-card" style="--project-color:${color}">
+      <span class="project-emoji" onclick="openProject('${p.id}')" style="cursor:pointer;">${p.emoji}</span>
+      <div class="project-info" onclick="openProject('${p.id}')" style="cursor:pointer;">
+        <div class="project-name">${escHtml(p.name)}</div>
+        <div class="project-count">残り ${count} 件のタスク</div>
+      </div>
+      <button class="project-edit-btn" onclick="openEditProject('${p.id}')">…</button>
+    </div>`;
+  });
+  html += `<button class="project-add-btn" onclick="openAddProject()">＋ プロジェクトを追加</button>`;
+  document.getElementById('project-list').innerHTML = html;
+}
+
+// ===== RENDER PROJECT DETAIL =====
+function openProject(projectId) {
+  state.currentProject = projectId;
+  const project = state.projects.find(p => p.id === projectId);
+  document.getElementById('header-title').textContent = `${project.emoji} ${project.name}`;
+  document.getElementById('header-badge').textContent = '';
+
+  const tasks = state.tasks.filter(t => t.projectId === projectId && !t.done);
+  const done = state.tasks.filter(t => t.projectId === projectId && t.done);
+
+  let html = '';
+  if (tasks.length === 0 && done.length === 0) {
+    html = `<div class="day-group"><div class="empty-state"><div class="empty-icon">✅</div>タスクがありません<br>＋ボタンから追加してみましょう</div></div>`;
+  } else {
+    if (tasks.length > 0) {
+      html += `<div class="day-group">`;
+      tasks.forEach(t => { html += renderTaskItem(t, true); });
+      html += `</div>`;
+    }
+    if (done.length > 0) {
+      html += `<div class="section-label" style="margin-top:16px;margin-bottom:8px;">完了済み</div>`;
+      html += `<div class="day-group">`;
+      done.slice(-5).forEach(t => { html += renderTaskItem(t, false); });
+      html += `</div>`;
+    }
+  }
+  document.getElementById('project-detail-tasks').innerHTML = html;
+
+  showScreen('project-detail-screen');
+  document.getElementById('tab-project').classList.add('active');
+  document.getElementById('tab-home').classList.remove('active');
+  document.getElementById('tab-settings').classList.remove('active');
+}
+
+function backToProjects() {
+  state.currentProject = null;
+  document.getElementById('header-title').textContent = 'プロジェクト';
+  renderProjects();
+  showScreen('project-screen');
+  updateHeaderForTab('project');
+}
+
+// ===== COMPLETE TASK =====
+function completeTask(id) {
+  const task = state.tasks.find(t => t.id === id);
+  if (!task) return;
+  const el = document.getElementById(`task-${id}`);
+  if (el) {
+    el.classList.add('completing');
+    setTimeout(() => {
+      task.done = !task.done;
+      save();
+      renderAll();
+    }, 320);
+  } else {
+    task.done = !task.done;
+    save();
+    renderAll();
+  }
+}
+
+// ===== ADD TASK =====
+function openAddTask() {
+  const sel = document.getElementById('task-project-select');
+  sel.innerHTML = `<option value="">プロジェクトなし</option>` +
+    state.projects.map(p => `<option value="${p.id}" ${state.currentProject===p.id?'selected':''}>${p.emoji} ${escHtml(p.name)}</option>`).join('');
+  document.getElementById('task-name-input').value = '';
+  document.getElementById('task-date-input').value = '';
+  openModal('add-task-modal');
+  setTimeout(() => document.getElementById('task-name-input').focus(), 100);
+}
+
+function addTask() {
+  const name = document.getElementById('task-name-input').value.trim();
+  if (!name) return;
+  const projectId = document.getElementById('task-project-select').value || null;
+  const date = document.getElementById('task-date-input').value || null;
+  const task = { id: 'task_' + Date.now(), name, projectId, date, done: false, createdAt: Date.now() };
+  state.tasks.push(task);
+  save();
+  closeModal('add-task-modal');
+  renderAll();
+}
+
+// ===== ADD PROJECT =====
+function openAddProject() {
+  document.getElementById('project-name-input').value = '';
+  openModal('add-project-modal');
+  setTimeout(() => document.getElementById('project-name-input').focus(), 100);
+}
+
+function addProject() {
+  const name = document.getElementById('project-name-input').value.trim();
+  if (!name) return;
+  const emojiSelect = document.getElementById('project-emoji-select');
+  const emoji = emojiSelect.value;
+  const color = PROJECT_COLORS[state.projects.length % PROJECT_COLORS.length];
+  const project = { id: 'proj_' + Date.now(), name, emoji, color };
+  state.projects.push(project);
+  save();
+  closeModal('add-project-modal');
+  renderAll();
+}
+
+// ===== EDIT TASK =====
+function openEditTask(e, taskId) {
+  e.stopPropagation();
+  e.preventDefault();
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  document.getElementById('edit-task-id').value = taskId;
+  document.getElementById('edit-task-name-input').value = task.name;
+  document.getElementById('edit-task-date-input').value = task.date || '';
+  // project select
+  const sel = document.getElementById('edit-task-project-select');
+  sel.innerHTML = `<option value="">プロジェクトなし</option>` +
+    state.projects.map(p => `<option value="${p.id}" ${task.projectId===p.id?'selected':''}>${p.emoji} ${escHtml(p.name)}</option>`).join('');
+  openModal('edit-task-modal');
+  setTimeout(() => document.getElementById('edit-task-name-input').focus(), 100);
+}
+
+function updateTask() {
+  const id = document.getElementById('edit-task-id').value;
+  const name = document.getElementById('edit-task-name-input').value.trim();
+  if (!name) return;
+  const task = state.tasks.find(t => t.id === id);
+  if (!task) return;
+  task.name = name;
+  task.date = document.getElementById('edit-task-date-input').value || null;
+  task.projectId = document.getElementById('edit-task-project-select').value || null;
+  save();
+  closeModal('edit-task-modal');
+  renderAll();
+}
+
+function deleteTask() {
+  const id = document.getElementById('edit-task-id').value;
+  const task = state.tasks.find(t => t.id === id);
+  if (!task) return;
+  if (!confirm(`「${task.name}」を削除しますか？`)) return;
+  state.tasks = state.tasks.filter(t => t.id !== id);
+  save();
+  closeModal('edit-task-modal');
+  renderAll();
+}
+
+// ===== EDIT PROJECT =====
+function openEditProject(projectId) {
+  const p = state.projects.find(x => x.id === projectId);
+  if (!p) return;
+  document.getElementById('edit-project-id').value = projectId;
+  document.getElementById('edit-project-name-input').value = p.name;
+  // set emoji select
+  const sel = document.getElementById('edit-project-emoji-select');
+  for (let opt of sel.options) {
+    if (opt.value === p.emoji) { opt.selected = true; break; }
+  }
+  openModal('edit-project-modal');
+  setTimeout(() => document.getElementById('edit-project-name-input').focus(), 100);
+}
+
+function updateProject() {
+  const id = document.getElementById('edit-project-id').value;
+  const name = document.getElementById('edit-project-name-input').value.trim();
+  if (!name) return;
+  const emoji = document.getElementById('edit-project-emoji-select').value;
+  const p = state.projects.find(x => x.id === id);
+  if (!p) return;
+  p.name = name;
+  p.emoji = emoji;
+  save();
+  closeModal('edit-project-modal');
+  renderAll();
+}
+
+function deleteProject(id) {
+  if (!id) id = document.getElementById('edit-project-id').value;
+  const p = state.projects.find(x => x.id === id);
+  if (!p) return;
+  const taskCount = state.tasks.filter(t => t.projectId === id).length;
+  const msg = taskCount > 0
+    ? `「${p.name}」を削除しますか？\n（このプロジェクトのタスク ${taskCount} 件も削除されます）`
+    : `「${p.name}」を削除しますか？`;
+  if (!confirm(msg)) return;
+  state.projects = state.projects.filter(x => x.id !== id);
+  state.tasks = state.tasks.filter(t => t.projectId !== id);
+  save();
+  closeModal('edit-project-modal');
+  renderAll();
+}
+
+// ===== SOMEDAY TOGGLE =====
+function toggleSomeday() {
+  state.somedayOpen = !state.somedayOpen;
+  renderHome();
+}
+
+// ===== MODAL =====
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ===== TAB NAVIGATION =====
+function switchTab(tab) {
+  state.currentProject = null;
+  updateHeaderForTab(tab);
+  showScreen(`${tab}-screen`);
+  document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  renderAll();
+}
+
+function updateHeaderForTab(tab) {
+  const titles = { home: '今週のタスク', project: 'プロジェクト', settings: '設定' };
+  document.getElementById('header-title').textContent = titles[tab] || '';
+  const totalActive = state.tasks.filter(t => !t.done).length;
+  document.getElementById('header-badge').textContent = tab === 'home' ? `残り ${totalActive} 件` : '';
+}
+
+function showScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+}
+
+// ===== SETTINGS =====
+function clearAllData() {
+  if (confirm('すべてのタスクとプロジェクトを削除しますか？')) {
+    state.tasks = [];
+    state.projects = getDefaultProjects();
+    save();
+    switchTab('home');
+  }
+}
+
+// ===== UTILS =====
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderAll() {
+  renderHome();
+  if (document.getElementById('project-screen').classList.contains('active')) renderProjects();
+  if (document.getElementById('project-detail-screen').classList.contains('active') && state.currentProject) openProject(state.currentProject);
+}
+
+// ===== INIT =====
+function init() {
+  load();
+  // header date
+  const days = getWeekDays();
+  document.getElementById('header-date').textContent = getHeaderDateRange();
+  // set today as default date
+  document.getElementById('task-date-input') && (document.getElementById('task-date-input').value = today());
+  renderAll();
+}
+
+init();
+</script>
+</body>
+</html>
